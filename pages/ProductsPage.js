@@ -19,9 +19,18 @@ class ProductsPage extends BasePage {
   }
 
   async addProductToCart(productName) {
-    const addButton = this.page.locator(`[data-test="add-to-cart-${this.formatProductName(productName)}"]`);
+  const formattedName = this.formatProductName(productName);
+
+  const addButton = this.page.locator(
+    `[data-test="add-to-cart-${formattedName}"]`
+  );
+
+  // Only click if Add button exists (not already added)
+  if (await addButton.isVisible()) {
     await addButton.click();
   }
+}
+
 
   async removeProductFromCart(productName) {
     const removeButton = this.page.locator(`[data-test="remove-${this.formatProductName(productName)}"]`);
