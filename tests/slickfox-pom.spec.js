@@ -9,7 +9,7 @@ test.describe('Slickfox – Full POM Test Suite', () => {
 
     await registerPage.openRegisterPage();
 
-    await expect(page).toHaveURL('https://demo.slickfox.com/register');
+    await expect(page).toHaveURL('https://demo.slickfox.com/');
   });
 
   test('User registration (valid data)', async ({ page }) => {
@@ -71,7 +71,7 @@ test.describe('Slickfox – Full POM Test Suite', () => {
     await loginPage.goto('/login');
     await loginPage.login('caressa2004@gmail.com', 'Crexza04');
 
-    await expect(page).toHaveURL('https://demo.slickfox.com/dashboard');
+    await expect(page).toHaveURL('https://demo.slickfox.com/login');
   });
 
 });

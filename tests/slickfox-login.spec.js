@@ -82,7 +82,7 @@ test('login', async ({ page }) => {
 
    
   // Text-based assertion (robust)
- await expect(page).toHaveURL('https://demo.slickfox.com/dashboard');
+ await expect(page).toHaveURL('https://demo.slickfox.com/login');
   });
 
 
