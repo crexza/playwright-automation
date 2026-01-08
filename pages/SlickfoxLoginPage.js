@@ -1,25 +1,56 @@
 const SlickfoxBasePage = require('./SlickfoxBasePage');
+const { expect } = require('@playwright/test');
 
 class SlickfoxLoginPage extends SlickfoxBasePage {
   constructor(page) {
     super(page);
 
-    // Locators
-    this.loginLink = page.getByRole('link', { name: /Log in/i });
+    // Login page locators
+    this.loginLink = page.getByRole('link', { name: /log in/i });
     this.emailInput = page.locator('input[type="email"]');
     this.passwordInput = page.locator('input[type="password"]');
+    this.rememberMeCheckbox = page.locator('input[type="checkbox"]');
     this.loginButton = page.getByRole('button', { name: /login|sign in/i });
+
+    // Header locators (after login)
+    // Unique avatar/user menu button
+    this.userMenuButton = page.locator('nav button:has(img)');
+
+    // Logout button (actual button in DOM, not menuitem)
+    this.logoutButton = page.getByRole('button', { name: /log out/i });
   }
 
+  // Open the login page
   async openLoginPage() {
     await this.goto();
     await this.loginLink.click();
   }
 
-  async login(email, password) {
+  // Login function with optional Remember Me
+  async login(email, password, rememberMe = false) {
     await this.emailInput.fill(email);
     await this.passwordInput.fill(password);
+
+    if (rememberMe) {
+      await this.rememberMeCheckbox.check();
+    }
+
     await this.loginButton.click();
+
+    // Ensure login succeeded by checking avatar visibility
+    await expect(this.userMenuButton).toBeVisible();
+  }
+
+  // Logout function
+  async logout() {
+    await this.userMenuButton.click();
+
+    // Ensure logout button is visible before clicking
+    await expect(this.logoutButton).toBeVisible();
+    await this.logoutButton.click();
+
+    // Ensure login link is visible again after logout
+    await expect(this.loginLink).toBeVisible();
   }
 }
 
