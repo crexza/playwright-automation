@@ -11,6 +11,11 @@ class SlickfoxLoginPage extends SlickfoxBasePage {
     this.passwordInput = page.locator('input[type="password"]');
     this.rememberMeCheckbox = page.locator('input[type="checkbox"]');
     this.loginButton = page.getByRole('button', { name: /login|sign in/i });
+    this.forgotPasswordLink = page.getByRole('link', { name: /forgot password/i });
+    this.emailInput = page.locator('input[type="email"]');
+    this.submitButton = page.getByRole('button', { name: /reset|send/i });
+    this.successMessage = page.locator('[role="alert"], .alert, .success');
+
 
     // Header locators (after login)
     // Unique avatar/user menu button
@@ -52,6 +57,20 @@ class SlickfoxLoginPage extends SlickfoxBasePage {
     // Ensure login link is visible again after logout
     await expect(this.loginLink).toBeVisible();
   }
+
+  async goToForgotPassword() {
+  await this.forgotPasswordLink.click();
+}
+
+async requestPasswordReset(email) {
+  await this.emailInput.fill(email);
+  await this.submitButton.click();
+}
+
+
+
+
+
 }
 
 module.exports = SlickfoxLoginPage;

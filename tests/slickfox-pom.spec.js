@@ -1,6 +1,8 @@
 const { test, expect } = require('@playwright/test');
 const RegisterPage = require('../pages/RegisterPage');
 const SlickfoxLoginPage = require('../pages/SlickfoxLoginPage');
+const ResetPasswordPage = require('../pages/ResetPasswordPage');
+
 
 test.describe('Slickfox – Full POM Test Suite', () => {
 
@@ -77,7 +79,7 @@ test.describe('Slickfox – Full POM Test Suite', () => {
   test('Login with Remember Me enabled (auto-filled after logout)', async ({ page }) => {
   const loginPage = new SlickfoxLoginPage(page);
 
-  // 1–6 Login with Remember Me
+  // Login with Remember Me
   await loginPage.openLoginPage();
   await loginPage.login(
     'caressa2004@gmail.com',
@@ -85,21 +87,19 @@ test.describe('Slickfox – Full POM Test Suite', () => {
     true // Remember Me ON
   );
 
-  // 7–8 Logout
+  //Logout
   await loginPage.logout();
-
-  // 9 Click Log In again
+  // Click Log In again
   await loginPage.loginLink.click();
-
-  // 10 Observe fields auto-filled
+  // Observe fields auto-filled
   await expect(loginPage.emailInput).toHaveValue('caressa2004@gmail.com');
   await expect(loginPage.passwordInput).not.toHaveValue(''); // browser may mask but still filled
 });
 
-test('Login without Remember Me (fields NOT auto-filled)', async ({ page }) => {
+  test('Login without Remember Me (fields NOT auto-filled)', async ({ page }) => {
   const loginPage = new SlickfoxLoginPage(page);
 
-  // 1–5 Login without Remember Me
+  // Login without Remember Me
   await loginPage.openLoginPage();
   await loginPage.login(
     'caressa2004@gmail.com',
@@ -107,72 +107,69 @@ test('Login without Remember Me (fields NOT auto-filled)', async ({ page }) => {
     false // Remember Me OFF
   );
 
-  // 6–7 Logout
+  // Logout
   await loginPage.logout();
-
-  // 8 Click Log In again
+  // Click Log In again
   await loginPage.loginLink.click();
-
-  // 9 Observe fields empty
+  // Observe fields empty
   await expect(loginPage.emailInput).toHaveValue('');
   await expect(loginPage.passwordInput).toHaveValue('');
 });
 
-test('Login with invalid email and password', async ({ page }) => {
+  test('Login with invalid email and password', async ({ page }) => {
     const loginPage = new SlickfoxLoginPage(page);
 
-    // 1–2: Open login page
+    //Open login page
     await loginPage.openLoginPage();
 
-    // 3–4: Enter invalid credentials
+    // Enter invalid credentials
     await loginPage.emailInput.fill('invaliduser@example.com');
     await loginPage.passwordInput.fill('WrongPass123');
 
-    // 5: Click Sign In
+    //  Click Sign In
     await loginPage.loginButton.click();
 
-    // ✅ Assertion: Expect error message to appear
+    //Expect error message to appear
     const errorLocator = page.getByText(/invalid|incorrect|failed/i);
     await expect(errorLocator).toBeVisible({ timeout: 5000 });
 
-    // Optionally, ensure we are still on the login page
-    await expect(page).toHaveURL(/login/);
+
   });
 
-test('Dashboard should not be accessible after failed login', async ({ page }) => {
+  test('Dashboard should not be accessible after failed login', async ({ page }) => {
     const loginPage = new SlickfoxLoginPage(page);
 
-    // Step 1–2: Open login page
+    //Open login page
     await loginPage.openLoginPage();
 
-    // Step 3–4: Enter invalid credentials
+    //Enter invalid credentials
     await loginPage.emailInput.fill('invaliduser@example.com');
     await loginPage.passwordInput.fill('WrongPass123');
 
-    // Step 5: Click Sign In
+    //Click Sign In
     await loginPage.loginButton.click();
 
-    // Optional: Ensure login failed
+    //  Ensure login failed
     const errorLocator = page.getByText(/invalid|incorrect|failed/i);
     await expect(errorLocator).toBeVisible({ timeout: 5000 });
 
-    // Step 6: Try accessing dashboard directly
+    // Try accessing dashboard directly
     await page.goto('https://demo.slickfox.com/dashboard');
 
-    // ✅ Assertion: Should be redirected back to login
+    //Should be redirected back to login
     await expect(page).toHaveURL(/login/);
 
-    // Optional: Ensure the dashboard content is not visible
+    //  Ensure the dashboard content is not visible
     await expect(page.getByRole('heading', { name: /dashboard/i })).not.toBeVisible();
   });
 
-test('User registration with valid data', async ({ page }) => {
+  test('User registration with valid data', async ({ page }) => {
     const registerPage = new RegisterPage(page);
 
-    // Step 1–2: Open registration page
+    // Open registration page
     await registerPage.openRegisterPage();
 
-    // Step 3: Fill all required fields
+    //  Fill all required fields
     await registerPage.register({
       name: 'Test User',
       email: 'testuser123@example.com',
@@ -182,7 +179,7 @@ test('User registration with valid data', async ({ page }) => {
       phone: '0123456789'
     });
 
-    // Step 4–5: Observe outcomes
+    //  Observe outcomes
 
     // Option 1: Check URL redirect to login or dashboard
     await expect(page).toHaveURL(/login|dashboard/);
@@ -194,27 +191,50 @@ test('User registration with valid data', async ({ page }) => {
     }
      });
 
-test('Click Forgot Password navigates to forgot-password page', async ({ page }) => {
+  test('Click Forgot Password navigates to forgot-password page', async ({ page }) => {
     const loginPage = new SlickfoxLoginPage(page);
 
-    // 1–2: Open login page
+    // Open login page
     await loginPage.openLoginPage();
 
-    // 3: Enter email
+    //  Enter email
     await loginPage.emailInput.fill('testuser123@example.com');
 
-    // 4: Click "Forgot Password"
+    //  Click "Forgot Password"
     const forgotPasswordLink = page.getByRole('link', { name: /forgot password/i });
     await forgotPasswordLink.click();
 
-    // Assertion: Should navigate to /forgot-password
+    //  Should navigate to /forgot-password
     await expect(page).toHaveURL('https://demo.slickfox.com/forgot-password');
-
-
- 
-
-  
   });
+
+  test('Forgot Password flow', async ({ page }) => {
+  const loginPage = new SlickfoxLoginPage(page);
+
+  // Open site & go to login
+  await loginPage.openLoginPage();
+
+  // Go to Forgot Password
+  await loginPage.goToForgotPassword();
+  await expect(page).toHaveURL(/forgot-password/);
+
+  // Request password reset (VALID EMAIL)
+  await loginPage.requestPasswordReset('caressa2004@gmail.com');
+
+  // Verify reset email confirmation message
+  await expect(
+    page.getByText(/we have emailed your password reset link/i)
+  ).toBeVisible();
+
+  // UI automation stops here (email token required)
+});
+
+
+
+
+
+
+
 
 
 
