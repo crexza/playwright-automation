@@ -1,23 +1,29 @@
+// pages/DashboardPage.js
 class DashboardPage {
   constructor(page) {
     this.page = page;
 
-    // User menu button (user avatar / name)
-    this.userMenuButton = page.getByRole('button', {
-      name: /caressa lopez/i
-    });
+    // ✅ picks the user button (it contains an img with accessible name)
+    this.userMenuButton = page.locator('nav')
+      .getByRole('button')
+      .filter({ has: page.getByRole('img', { name: /.+/ }) })
+      .first();
 
-    // Logout is a BUTTON, not a menuitem
-    this.logoutButton = page.getByRole('button', {
-      name: /log out/i
-    });
+    this.profileLink = page.getByRole('link', { name: /^profile$/i });
+    this.logoutButton = page.getByRole('button', { name: /^log out$/i }); // snapshot shows button
+  }
+
+  async openUserMenu() {
+    await this.userMenuButton.click();
+  }
+
+  async goToProfile() {
+    await this.openUserMenu();
+    await this.profileLink.click();
   }
 
   async logout() {
-    await this.userMenuButton.click();
-
-    // Ensure menu is open before clicking logout
-    await this.logoutButton.waitFor({ state: 'visible' });
+    await this.openUserMenu();
     await this.logoutButton.click();
   }
 }

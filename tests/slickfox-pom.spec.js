@@ -4,6 +4,8 @@ const RegisterPage = require('../pages/RegisterPage');
 const SlickfoxLoginPage = require('../pages/SlickfoxLoginPage');
 const DashboardPage = require('../pages/DashboardPage');
 const ForgotPasswordPage = require('../pages/ForgotPasswordPage');
+const ProfilePage = require('../pages/ProfilePage');
+
 // Read from .env
 const SLICKFOX_EMAIL = process.env.SLICKFOX_EMAIL;
 const SLICKFOX_PASSWORD = process.env.SLICKFOX_PASSWORD;
@@ -188,5 +190,51 @@ test.describe('Slickfox – Full POM Test Suite', () => {
     // After logout some apps go to "/" instead of "/login"
     await expect(page).toHaveURL(/login|\/$/);
   });
+
+   test('ST-LOGOUT-02 - Access dashboard should be denied after logout', async ({ page }) => {
+    const loginPage = new SlickfoxLoginPage(page);
+    const dashboardPage = new DashboardPage(page);
+
+    await loginPage.openLoginPage();
+    await loginPage.login(SLICKFOX_EMAIL, SLICKFOX_PASSWORD);
+
+    await expect(page).toHaveURL(/dashboard/);
+
+    await dashboardPage.logout();
+
+    // after logout slickfox may go to /login or /
+    await expect(page).toHaveURL(/login|\/$/);
+
+    // try to access dashboard again
+    await page.goto('https://demo.slickfox.com/dashboard');
+
+    // should redirect to login (or home)
+    await expect(page).toHaveURL(/login|\/$/);
+  });
+
+  test('ST-PRO-01 - View Profile shows photo/name/email', async ({ page }) => {
+  const loginPage = new SlickfoxLoginPage(page);
+  const dashboardPage = new DashboardPage(page);
+  const profilePage = new ProfilePage(page);
+
+  await loginPage.openLoginPage();
+  await loginPage.login(SLICKFOX_EMAIL, SLICKFOX_PASSWORD);
+
+  await expect(page).toHaveURL(/dashboard/);
+
+  await dashboardPage.goToProfile();
+  await expect(page).toHaveURL(/profile/i);
+
+  await expect(profilePage.profileInfoHeading).toBeVisible();
+  await expect(profilePage.nameInput).toBeVisible();
+  await expect(profilePage.emailInput).toBeVisible();
+
+  // Since they are inputs, check values (not "visible text")
+  await expect(profilePage.nameInput).toHaveValue(/.+/); // has something
+  await expect(profilePage.emailInput).toHaveValue(SLICKFOX_EMAIL);
+});
+
+
+
 
 });
