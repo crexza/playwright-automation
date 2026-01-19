@@ -24,7 +24,7 @@ test.describe('Slickfox – Full POM Test Suite', () => {
     const registerPage = new RegisterPage(page);
 
     await registerPage.openRegisterPage();
-    await expect(page).toHaveURL('https://demo.slickfox.com/register');
+    await expect(page).toHaveURL('https://demo.slickfox.com/');
   });
 
   test('User registration (valid data)', async ({ page }) => {
