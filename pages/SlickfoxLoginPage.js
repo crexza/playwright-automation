@@ -33,18 +33,19 @@ class SlickfoxLoginPage extends SlickfoxBasePage {
 
   // Login function with optional Remember Me
   async login(email, password, rememberMe = false) {
-    await this.emailInput.fill(email);
-    await this.passwordInput.fill(password);
+  await this.emailInput.fill(email);
+  await this.passwordInput.fill(password);
 
-    if (rememberMe) {
-      await this.rememberMeCheckbox.check();
-    }
-
-    await this.loginButton.click();
-
-    // Ensure login succeeded by checking avatar visibility
-    await expect(this.userMenuButton).toBeVisible();
+  if (rememberMe) {
+    await this.rememberMeCheckbox.check();
   }
+
+  await this.loginButton.click();
+
+  // ✅ Reliable login success check
+  await this.page.waitForURL(/dashboard/);
+}
+
 
   // Logout function
   async logout() {
