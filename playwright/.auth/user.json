@@ -1,0 +1,25 @@
+{
+  "cookies": [
+    {
+      "name": "XSRF-TOKEN",
+      "value": "eyJpdiI6IjNtbzc4Y2FpWmtCcDFkUFFJektMOXc9PSIsInZhbHVlIjoiUmhseFpRT3FpYWVoZW5xbGpTSUl1clJ3MVllV2Z2NUNzdW1kakthc2sxZGMrOXpNWWxOWWVlL0NzQkV4Y3FyNkM5alArL2QySThhS21vOWlTZXZQaTF0T0UrMEJ4N3pRSTBzby9ScGRLa1g5Vm1jMkk4bk5pN1BSNUNJVzVPS20iLCJtYWMiOiJmMzI5ZjUxMjQ4YWI5ODQ4MjIyMDhlZmEyMmViNWQ0OGY1ZjU1ZGQ1Yzk4MTE2MTRlM2VhYWIzNjczMDhlNWUwIiwidGFnIjoiIn0%3D",
+      "domain": "demo.slickfox.com",
+      "path": "/",
+      "expires": 1769421779.522143,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "slickfox-session",
+      "value": "eyJpdiI6ImQvNzBsNk8yVzQ1ZldVOXVBYmpVMFE9PSIsInZhbHVlIjoiUnhDMTVkQmdXSmZNRnFvcXRnb3hYSjdNN3RHVlNJaXl6M2RUTFh0b3lPcFJDellIanBiM0VOVTdjN1N4UG15QU5zZE5XUjYvMGsvamRzT1lST1BsaVNZWERjU1R2SG1nbEpucUJTRHNuZlZ3S3FoTFh4YVZsUkhhcmg5M3Ryc04iLCJtYWMiOiIwOWJjMTdjMTA4Y2Q0ODU2YjVjMTQxNGYxMDIyMzgxMWI5MzUyMDBiYmQyZmVmM2Y4MzAwNjQ0NmJjMzI1OWUyIiwidGFnIjoiIn0%3D",
+      "domain": "demo.slickfox.com",
+      "path": "/",
+      "expires": 1769421779.522288,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}

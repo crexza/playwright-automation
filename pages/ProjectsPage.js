@@ -27,6 +27,13 @@ class ProjectsPage {
     this.mainContent = page.locator('main');
 
     /* =======================
+       🔹 EPIC (FROM PROJECT LIST)
+    ======================== */
+    this.viewEpicAction = this.mainContent
+      .getByRole('link', { name: /view epic/i })
+      .or(this.mainContent.getByRole('button', { name: /view epic/i }));
+
+    /* =======================
        CREATE PROJECT PAGE
     ======================== */
     this.createProjectHeading = page.getByRole('heading', {
@@ -62,10 +69,12 @@ class ProjectsPage {
   /* =======================
      NAVIGATION HELPERS
   ======================== */
-  async gotoProjects() {
-    await this.projectsNav.click();
-    await this.page.waitForURL(/\/projects/i);
-  }
+ // pages/ProjectsPage.js
+async gotoProjects() {
+  await this.page.goto('/projects', { waitUntil: 'domcontentloaded' });
+  await this.page.waitForURL(/\/projects/i);
+}
+
 
   async openCreateProject() {
     await this.gotoProjects();
@@ -74,6 +83,19 @@ class ProjectsPage {
     await this.createNewProjectAction.first().click();
 
     await this.createProjectHeading.waitFor({ state: 'visible' });
+  }
+
+  /* =======================
+     🔹 PROJECT → EPIC
+  ======================== */
+  async openProjectEpic() {
+    await this.gotoProjects();
+
+    await this.viewEpicAction.first().waitFor({ state: 'visible' });
+    await this.viewEpicAction.first().click();
+
+    // Epic page URL + heading signal
+    await this.page.waitForURL(/epic/i);
   }
 
   /* =======================
@@ -92,14 +114,13 @@ class ProjectsPage {
       await this.statusSelect.selectOption({ label: status });
     }
 
-    // Teams are optional; intentionally skipped if empty/undefined
+    // Teams optional → intentionally skipped
   }
 
   async submitCreateProject() {
     await this.createProjectButton.click();
 
-    // Either success (redirect to /projects)
-    // OR validation failure (still on create page)
+    // success OR validation failure
     await Promise.race([
       this.page.waitForURL(/\/projects/i, { timeout: 15000 }),
       this.createProjectHeading.waitFor({ state: 'visible', timeout: 15000 }),
@@ -119,7 +140,6 @@ class ProjectsPage {
       await this.gotoProjects();
     }
 
-
     await expect(
       this.mainContent.getByText(projectName, { exact: false })
     ).toBeVisible({ timeout: 15000 });
@@ -130,14 +150,12 @@ class ProjectsPage {
       await this.gotoProjects();
     }
 
-
     await expect(
       this.mainContent.getByText(projectName, { exact: false })
     ).toHaveCount(0);
   }
 
   async expectNameRequiredError() {
-    // Accept either visible error text OR aria-invalid state
     const ariaInvalid = this.projectNameInput.locator(
       '[aria-invalid="true"]'
     );

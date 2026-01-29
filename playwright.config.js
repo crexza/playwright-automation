@@ -1,7 +1,4 @@
-
 require('dotenv').config();
-
-// @ts-check
 const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
@@ -20,7 +17,7 @@ module.exports = defineConfig({
   reporter: [['html'], ['list']],
 
   use: {
-    baseURL: 'https://demo.slickfox.com', 
+    baseURL: 'https://demo.slickfox.com',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -28,9 +25,20 @@ module.exports = defineConfig({
   },
 
   projects: [
+    // 🔑 AUTH SETUP
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.js/,
+    },
+
+    // 🧪 ACTUAL TESTS
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
   ],
 });
