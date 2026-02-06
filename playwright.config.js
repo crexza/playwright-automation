@@ -32,6 +32,7 @@ module.exports = defineConfig({
         /us-acc-09-10-11-profile\.spec\.js/,
         /us-proj-01-02-projects\.spec\.js/,
         /us-epic\.spec\.js/,
+        /us-user-story\.spec\.js/,
       ],
     },
 
@@ -48,6 +49,7 @@ module.exports = defineConfig({
         /us-acc-09-10-11-profile\.spec\.js/,
         /us-proj-01-02-projects\.spec\.js/,
         /us-epic\.spec\.js/,
+        /us-user-story\.spec\.js/,
       ],
     },
   ],

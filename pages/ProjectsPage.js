@@ -88,15 +88,28 @@ async gotoProjects() {
   /* =======================
      🔹 PROJECT → EPIC
   ======================== */
-  async openProjectEpic() {
-    await this.gotoProjects();
+   // pages/ProjectsPage.js
+async openProjectEpic(projectNameOrRegex = /Auto Project|Hachiwaree/i) {
+  await this.gotoProjects();
 
-    await this.viewEpicAction.first().waitFor({ state: 'visible' });
-    await this.viewEpicAction.first().click();
+  // Table exists in the main page
+  const table = this.page.getByRole('table');
+  await table.waitFor({ state: 'visible', timeout: 15000 });
 
-    // Epic page URL + heading signal
-    await this.page.waitForURL(/epic/i);
-  }
+  // Try match by project name, else fallback to first data row
+  const rowByName = table.getByRole('row', { name: projectNameOrRegex }).first();
+  const firstDataRow = table.getByRole('row').nth(1); // row 0 = header
+
+  const row = (await rowByName.isVisible().catch(() => false)) ? rowByName : firstDataRow;
+
+  // In your screenshot the link name is "View Epics"
+  await row.getByRole('link', { name: /view epics/i }).click();
+
+  await this.page.waitForURL(/\/epics/i, { timeout: 15000 });
+}
+
+
+
 
   /* =======================
      CREATE PROJECT ACTIONS

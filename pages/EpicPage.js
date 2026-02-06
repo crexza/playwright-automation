@@ -120,6 +120,24 @@ class EpicPage {
     await this.cancelAction.click();
     await this.expectOnProjectDetailsPage();
   }
+
+  // pages/EpicPage.js
+  async openFirstEpicDetails() {
+    await this.expectOnEpicList();
+
+    // Prefer explicit "view" label if exists, otherwise first icon button/link in list
+    const firstView = this.page.locator('main')
+      .locator('[aria-label*="view" i], [title*="view" i], a:has(svg), button:has(svg)')
+      .first();
+
+    await firstView.waitFor({ state: 'visible', timeout: 15000 });
+    await firstView.click();
+
+    // Epic details usually /epics/:id
+    await this.page.waitForURL(/\/epics\/\d+/, { timeout: 15000 });
+  }
+
+
 }
 
 module.exports = EpicPage;
