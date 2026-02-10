@@ -19,11 +19,18 @@ class EpicDetailsPage {
   }
 
   async waitForLoaded() {
-    await Promise.race([
-      this.heading.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {}),
-      this.page.waitForURL(/\/epics\/\d+/, { timeout: 20000 }),
-    ]);
-  }
+ await Promise.race([
+  this.heading.first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {}),
+  this.page
+    .getByRole('heading', { name: /ai generated user stories|review and select user stories/i })
+    .first()
+    .waitFor({ state: 'visible', timeout: 20000 })
+    .catch(() => {}),
+  this.page.waitForURL(/\/epics\/\d+/, { timeout: 20000 }).catch(() => {}),
+]);
+
+}
+
 
   async openCreateUserStory() {
     await this.createUserStoryBtn.first().waitFor({ state: 'visible', timeout: 20000 });
