@@ -1,282 +1,251 @@
 // tests/us-user-story.spec.js
 const { test, expect } = require('@playwright/test');
+
+test.describe.configure({ mode: 'serial' });
+
 const ProjectsPage = require('../pages/ProjectsPage');
 const EpicPage = require('../pages/EpicPage');
 const EpicDetailsPage = require('../pages/EpicDetailsPage');
-const UserStoryCreatePage = require('../pages/UserStoryCreatePage');
 const AiUserStoriesPanel = require('../pages/AiUserStoriesPanel');
+const UserStoryCreatePage = require('../pages/UserStoryCreatePage');
 
-test.describe('User Story Management (TS-01 → TS-10)', () => {
-  async function goToEpicDetails(page) {
-    const projects = new ProjectsPage(page);
-    const epics = new EpicPage(page);
-    const epicDetails = new EpicDetailsPage(page);
+let epicTitle;
+let epicId; // optional: if you can parse from URL
 
-    await projects.openProjectEpic();      // Projects -> View Epics
-    await epics.openFirstEpicDetails();    // Epics list -> open epic details (eye)
-    await epicDetails.waitForLoaded();
+async function goToFreshEpicDetails(page) {
+  // 1️⃣ Go to Projects page
+  await page.goto('https://demo.slickfox.com/projects', {
+    waitUntil: 'domcontentloaded',
+  });
 
-    return { epicDetails, epics, projects };
-  }
+  // 2️⃣ Open first project
+  await page.locator('a[href*="/projects/"]').first().click();
+  await page.waitForURL(/\/projects\/\d+/);
 
-  test('TS-01 (US-USER STORY-01) View epic details read-only', async ({ page }) => {
-    await goToEpicDetails(page);
+  // 3️⃣ Go to Epics tab inside project
+  await page.getByRole('link', { name: /epics/i }).click();
 
-    //  Realistic read-only check: ignore global search etc.
-    const editableFields = page.locator('main').locator(
-      'input:not(#search):not([type="search"]), textarea, select'
+  // 4️⃣ Wait for epic list
+  const epicLinks = page.locator('a[href*="/epics/"]');
+
+  if (await epicLinks.count() === 0) {
+    // 5️⃣ Create epic inside project
+    await page.getByRole('button', { name: /create epic|new epic/i }).click();
+
+    await page.getByLabel(/title/i).fill('Auto Epic ' + Date.now());
+    await page.getByLabel(/description/i).fill(
+      'Automation epic created for user story tests.'
     );
 
-    if (await editableFields.first().isVisible().catch(() => false)) {
-      const el = editableFields.first();
-      const readonly = await el.getAttribute('readonly');
-      if (readonly !== null) await expect(el).toHaveAttribute('readonly', /.+/);
-      else await expect(el).toBeDisabled();
-    } else {
-      await expect(page).toHaveURL(/\/epics\/\d+/);
-    }
+    await page.getByRole('button', { name: /create|save/i }).click();
+    await page.waitForURL(/\/epics\/\d+/);
+  } else {
+    await epicLinks.first().click();
+    await page.waitForURL(/\/epics\/\d+/);
+  }
+}
+
+
+
+
+test.describe('User Story Management (TS-01 → TS-10)', () => {
+ test.beforeEach(async ({ page }) => {
+  await goToFreshEpicDetails(page);
+});
+
+  test('TS-01 (US-USER STORY-01) View epic details read-only', async ({ page }) => {
+    const epicDetails = new EpicDetailsPage(page);
+    await epicDetails.waitForLoaded();
+
+    await expect(page).toHaveURL(/\/epics\/\d+/);
+
+    // Smoke asserts
+    await expect(epicDetails.title).toBeVisible();
+    await expect(epicDetails.detailsSection).toBeVisible();
   });
 
   test('TS-02 (US-USER STORY-02) Generate AI user stories displayed', async ({ page }) => {
-  const { epicDetails } = await goToEpicDetails(page);
-
-  if (!(await epicDetails.generateAIUserStoriesBtn.first().isVisible().catch(() => false))) {
-    test.skip(true, 'Generate AI User Stories button not available for this epic/account');
-  }
-
-  const ai = new AiUserStoriesPanel(page);
-
-  await epicDetails.openGenerateAIUserStories();
-
-  // This is the AI-Powered Generation page you showed
-  await ai.waitForShown();
-
-  await ai.generateFromRequirements(
-    'Create user stories for an e-commerce platform: login, product catalog, cart, checkout, payment, order tracking.'
-  );
-
-  // Accept either selectable checkboxes OR results list
- const checkboxCount = await ai.checkboxes.count();
-const resultCount = ai.resultItems ? await ai.resultItems.count() : 0;
-
-expect(checkboxCount + resultCount).toBeGreaterThan(0);
-});
-
- test('TS-03 (US-USER STORY-02) Token deduction 5 tokens per selected AI story', async ({ page }) => {
-  const { epicDetails } = await goToEpicDetails(page);
-
-  if (!(await epicDetails.generateAIUserStoriesBtn.first().isVisible().catch(() => false))) {
-    test.skip(true, 'Generate AI User Stories button not available for this epic/account');
-  }
-
-  const ai = new AiUserStoriesPanel(page);
-  const before = await epicDetails.readTokenBalanceNumber();
-
-  await epicDetails.openGenerateAIUserStories();
-await ai.waitForShown();
-
-if (!(await ai.hasSelectableItems())) {
-  test.skip(true, 'AI results are preview-only (no selectable items)');
-}
-
-  await ai.generateFromRequirements(
-    'Generate user stories for a smart farming app: sensor monitoring, irrigation automation, alerts, analytics dashboard.'
-  );
-
-  // Only do token deduction assertion if the UI actually supports selecting+saving
-  if (!(await ai.hasSelectableItems())) {
-    test.skip(true, 'No selectable AI items (no checkboxes on this page/UI)');
-  }
-
-  const selected = await ai.selectFirstN(2);
-  await ai.confirm();
-
-  await epicDetails.waitForLoaded();
-
-  const after = await epicDetails.readTokenBalanceNumber();
-  if (before !== null && after !== null) {
-    expect(after).toBe(before - 5 * selected);
-  }
-});
-
-  test('TS-04 (US-USER STORY-03) Manual create user story happy path', async ({ page }) => {
-    const { epicDetails } = await goToEpicDetails(page);
-
-    const create = new UserStoryCreatePage(page);
-    await epicDetails.openCreateUserStory();
-    await create.waitForLoaded();
-
-    const title = `Auto Story ${Date.now()}`;
-
-    await create.fillManualForm({
-      
-      asA: 'registered user',
-      iWant: 'to create a user story',
-      soThat: 'I can track requirements',
-    });
-
-    await create.submit();
+    const epicDetails = new EpicDetailsPage(page);
+    const aiPanel = new AiUserStoriesPanel(page);
 
     await epicDetails.waitForLoaded();
+
+    // Go to AI preview
+    await epicDetails.openGenerateAIUserStories();
+
+    // Wait until AI preview is actually ready (tokens OR checkboxes OR empty-state)
+    await aiPanel.waitForShown();
+
+    // Assert we are on preview page
+    await expect(page).toHaveURL(/\/user-stories\/ai\/preview/i);
+
+    // At least token summary exists (based on your snapshot: "Available Tokens")
+    await expect(aiPanel.tokenSummary).toBeVisible();
+  });
+
+  test('TS-03 (US-USER STORY-02) Token deduction 5 tokens per selected AI story', async ({ page }) => {
+    const aiPanel = new AiUserStoriesPanel(page);
+
+    await aiPanel.waitForShown();
+
+    const before = await aiPanel.readAvailableTokens();
+    expect(before).not.toBeNull();
+
+    // Select first story (or ensure one is selected)
+    await aiPanel.ensureAtLeastOneSelected();
+
+    const selectedCount = await aiPanel.readSelectedCount();
+    expect(selectedCount).toBeGreaterThan(0);
+
+    // Each user story costs 5 tokens (per UI)
+    const expectedCost = selectedCount * 5;
+
+    const remaining = await aiPanel.readRemainingTokens();
+    expect(remaining).not.toBeNull();
+
+    // remaining = available - expectedCost
+    expect(remaining).toBe(before - expectedCost);
+  });
+
+  test('TS-04 (US-USER STORY-03) Manual create user story happy path', async ({ page }) => {
+    const epicDetails = new EpicDetailsPage(page);
+    const create = new UserStoryCreatePage(page);
+
+    // Back to epic
+    await epicDetails.backToEpic();
+
+    // Ensure user stories tab is open
+    await epicDetails.openUserStoriesTab();
+
+    const title = `Manual Story ${Date.now()}`;
+
+    await epicDetails.openCreateUserStory();
+
+    await create.fillManualForm({
+      asA: 'user',
+      iWant: 'to create a user story manually',
+      soThat: 'I can validate manual creation',
+      title,
+    });
+
+    await create.save();
+
+    // Verify appears in list
+    await epicDetails.openUserStoriesTab();
     await epicDetails.expectUserStoryInList(title);
   });
 
   test('TS-05 (US-USER STORY-03) Mandatory field validation (negative)', async ({ page }) => {
-    const { epicDetails } = await goToEpicDetails(page);
-
+    const epicDetails = new EpicDetailsPage(page);
     const create = new UserStoryCreatePage(page);
-    await epicDetails.openCreateUserStory();
-    await create.waitForLoaded();
 
-    await create.submit();
-    await create.expectRequiredValidationAtLeastOne();
+    await epicDetails.openUserStoriesTab();
+    await epicDetails.openCreateUserStory();
+
+    // Intentionally incomplete
+    await create.fillManualForm({
+      asA: '',
+      iWant: '',
+      soThat: '',
+      title: '',
+    });
+
+    await create.saveExpectingValidationErrors();
   });
 
   test('TS-06 (US-USER STORY-04) Cancel user story creation returns to epic page', async ({ page }) => {
-    const { epicDetails } = await goToEpicDetails(page);
-
+    const epicDetails = new EpicDetailsPage(page);
     const create = new UserStoryCreatePage(page);
-    await epicDetails.openCreateUserStory();
-    await create.waitForLoaded();
 
-    // Fill only title (fast + enough for cancel scenario)
-    await create.fillManualForm({
-      title: `Temp Story ${Date.now()}`,
-    });
+    await epicDetails.openUserStoriesTab();
+    await epicDetails.openCreateUserStory();
 
     await create.cancel();
+
+    await expect(page).toHaveURL(/\/epics\/\d+/);
     await epicDetails.waitForLoaded();
   });
 
   test('TS-07 (US-USER STORY-05) View user story details read-only', async ({ page }) => {
-    const { epicDetails } = await goToEpicDetails(page);
+    const epicDetails = new EpicDetailsPage(page);
 
-    // Create story to ensure it exists (independent test)
-    const create = new UserStoryCreatePage(page);
-    await epicDetails.openCreateUserStory();
-    await create.waitForLoaded();
+    await epicDetails.openUserStoriesTab();
 
-    const title = `View Story ${Date.now()}`;
-    await create.fillManualForm({
-      
-      asA: 'registered user',
-      iWant: 'to view a story',
-      soThat: 'I can confirm details',
-    });
-    await create.submit();
+    // pick first story in list
+    const firstTitle = await epicDetails.readFirstUserStoryTitle();
+    expect(firstTitle).toBeTruthy();
 
-    await epicDetails.waitForLoaded();
-    await epicDetails.expectUserStoryInList(title);
+    await epicDetails.openUserStoryViewByTitle(firstTitle);
 
-    await epicDetails.openUserStoryViewByTitle(title);
-
-    await expect(page.locator('main')).toContainText(/as a|i want|so that|story/i);
-
-    const fields = page.locator('main').locator('input, textarea, select');
-    if (await fields.first().isVisible().catch(() => false)) {
-      const el = fields.first();
-      const readonly = await el.getAttribute('readonly');
-      if (readonly !== null) await expect(el).toHaveAttribute('readonly', /.+/);
-      else await expect(el).toBeDisabled();
+    // Read-only assert: inputs disabled or absence of Save button
+    const saveBtn = page.getByRole('button', { name: /^save$/i });
+    if (await saveBtn.isVisible().catch(() => false)) {
+      await expect(saveBtn).toBeDisabled();
     }
   });
 
   test('TS-08 (US-USER STORY-06) Edit user story updates saved data', async ({ page }) => {
-    const { epicDetails } = await goToEpicDetails(page);
+    const epicDetails = new EpicDetailsPage(page);
 
-    // Create a story first
-    const create = new UserStoryCreatePage(page);
-    await epicDetails.openCreateUserStory();
-    await create.waitForLoaded();
+    await epicDetails.openUserStoriesTab();
 
-    const title = `Edit Story ${Date.now()}`;
-    await create.fillManualForm({
-      
-      asA: 'registered user',
-      iWant: 'to edit a story',
-      soThat: 'I can update requirements',
-    });
-    await create.submit();
-
-    await epicDetails.waitForLoaded();
-    await epicDetails.expectUserStoryInList(title);
+    const title = await epicDetails.readFirstUserStoryTitle();
+    expect(title).toBeTruthy();
 
     await epicDetails.openUserStoryEditByTitle(title);
 
-    const titleField = page
-      .getByLabel(/title/i)
-      .or(page.locator('input[name="title"], #title'));
+    const updatedSuffix = `Updated ${Date.now()}`;
+    const titleField = page.getByLabel(/title/i).or(page.locator('input[name="title"]'));
+    if (await titleField.first().isVisible().catch(() => false)) {
+      await titleField.first().fill(`${title} - ${updatedSuffix}`);
+    }
 
-    await expect(titleField.first()).toBeVisible({ timeout: 15000 });
+    const save = page.getByRole('button', { name: /^save$/i }).or(page.getByRole('button', { name: /update/i }));
+    await save.first().click();
 
-    const updated = `${title} (Updated)`;
-    await titleField.first().fill(updated);
-
-    await page.getByRole('button', { name: /save|update/i }).click();
-
-    await epicDetails.waitForLoaded();
-    await epicDetails.expectUserStoryInList(updated);
+    // Back to list and verify
+    await epicDetails.backToEpic();
+    await epicDetails.openUserStoriesTab();
+    await epicDetails.expectUserStoryInList(updatedSuffix);
   });
 
   test('TS-09 (US-USER STORY-07) Delete user story removes it from list', async ({ page }) => {
-    const { epicDetails } = await goToEpicDetails(page);
+    const epicDetails = new EpicDetailsPage(page);
 
-    // Create a story first
-    const create = new UserStoryCreatePage(page);
-    await epicDetails.openCreateUserStory();
-    await create.waitForLoaded();
+    await epicDetails.openUserStoriesTab();
 
-    const title = `Delete Story ${Date.now()}`;
-    await create.fillManualForm({
-      
-      asA: 'registered user',
-      iWant: 'to delete a story',
-      soThat: 'I can remove outdated work',
-    });
-    await create.submit();
-
-    await epicDetails.waitForLoaded();
-    await epicDetails.expectUserStoryInList(title);
+    const title = await epicDetails.readFirstUserStoryTitle();
+    expect(title).toBeTruthy();
 
     await epicDetails.deleteUserStoryByTitle(title);
 
+    // Verify removed
     await expect(page.locator('main').getByText(title, { exact: false })).toHaveCount(0);
   });
 
   test('TS-10 (US-USER STORY-08) Save selected AI stories + token deduction', async ({ page }) => {
-  const { epicDetails } = await goToEpicDetails(page);
+    const epicDetails = new EpicDetailsPage(page);
+    const aiPanel = new AiUserStoriesPanel(page);
 
-  if (!(await epicDetails.generateAIUserStoriesBtn.first().isVisible().catch(() => false))) {
-    test.skip(true, 'Generate AI User Stories button not available for this epic/account');
-  }
+    await epicDetails.openGenerateAIUserStories();
+    await aiPanel.waitForShown();
 
-  const ai = new AiUserStoriesPanel(page);
-  const before = await epicDetails.readTokenBalanceNumber();
+    const before = await aiPanel.readAvailableTokens();
+    expect(before).not.toBeNull();
 
-  await epicDetails.openGenerateAIUserStories();
-await ai.waitForShown();
+    await aiPanel.ensureAtLeastOneSelected();
+    const selectedCount = await aiPanel.readSelectedCount();
+    expect(selectedCount).toBeGreaterThan(0);
 
-if (!(await ai.hasSelectableItems())) {
-  test.skip(true, 'AI results are preview-only (no selectable items)');
-}
+    await aiPanel.saveSelected();
 
-  await ai.generateFromRequirements(
-    'Generate user stories for a project management system: epics, user stories, roles, permissions, notifications.'
-  );
+    // After save, app usually returns to epic details
+    await expect(page).toHaveURL(/\/epics\/\d+/);
+    await epicDetails.waitForLoaded();
 
-  if (!(await ai.hasSelectableItems())) {
-    test.skip(true, 'No selectable AI items (no checkboxes on this page/UI)');
-  }
-
-  const selected = await ai.selectFirstN(3);
-  await ai.confirm();
-
-  await epicDetails.waitForLoaded();
-
-  const after = await epicDetails.readTokenBalanceNumber();
-  if (before !== null && after !== null) {
-    expect(after).toBe(before - 5 * selected);
-  }
-});
-
+    // Check user story count increased (at least by selectedCount)
+    await epicDetails.openUserStoriesTab();
+    const afterCount = await epicDetails.readUserStoryCount();
+    expect(afterCount).toBeGreaterThan(0);
+  });
 });

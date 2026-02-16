@@ -5,177 +5,59 @@ class ProjectsPage {
   constructor(page) {
     this.page = page;
 
-    /* =======================
-       NAVIGATION
-    ======================== */
-    this.projectsNav = page.getByRole('link', { name: /^projects$/i });
+    this.main = page.locator('main');
+    this.projectsHeading = page.getByRole('heading', { name: /projects/i });
 
-    /* =======================
-       PROJECT LIST PAGE
-    ======================== */
-    this.createNewProjectAction = page
-      .getByRole('button', {
-        name: /create new project|new project|create project/i,
-      })
-      .or(
-        page.getByRole('link', {
-          name: /create new project|new project|create project/i,
-        })
-      );
-
-    // Main content area (used for list assertions)
-    this.mainContent = page.locator('main');
-
-    /* =======================
-       🔹 EPIC (FROM PROJECT LIST)
-    ======================== */
-    this.viewEpicAction = this.mainContent
-      .getByRole('link', { name: /view epic/i })
-      .or(this.mainContent.getByRole('button', { name: /view epic/i }));
-
-    /* =======================
-       CREATE PROJECT PAGE
-    ======================== */
-    this.createProjectHeading = page.getByRole('heading', {
-      name: /create new project|create project/i,
-    });
-
-    this.projectNameInput = page.getByRole('textbox', {
-      name: /project name/i,
-    });
-
-    this.descriptionInput = page.getByRole('textbox', {
-      name: /^description$/i,
-    });
-
-    this.statusSelect = page.getByRole('combobox', {
-      name: /status/i,
-    });
-
-    this.createProjectButton = page.getByRole('button', {
-      name: /^create project$/i,
-    });
-
-    this.cancelLink = page.getByRole('link', { name: /^cancel$/i });
-
-    /* =======================
-       VALIDATION
-    ======================== */
-    this.nameRequiredError = page.getByText(
-      /project name|name.*required|required|field is required|can't be blank/i
-    );
+    // Cards/rows
+    this.projectCards = this.main.locator('a,button').filter({ hasText: /project/i }).or(this.main.locator('tr'));
   }
 
-  /* =======================
-     NAVIGATION HELPERS
-  ======================== */
- // pages/ProjectsPage.js
-async gotoProjects() {
-  await this.page.goto('/projects', { waitUntil: 'domcontentloaded' });
-  await this.page.waitForURL(/\/projects/i);
-}
+  async gotoProjects() {
+    const base = process.env.BASE_URL || 'https://demo.slickfox.com';
 
+    // Always use absolute URL to avoid baseURL config dependency
+    await this.page.goto(`${base}/projects`, { waitUntil: 'domcontentloaded' });
+    await expect(this.page).toHaveURL(/\/projects/i, { timeout: 20000 });
 
-  async openCreateProject() {
+    // “Projects” heading may or may not exist; don’t hard-fail on it
+    await this.projectsHeading.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+  }
+
+  async openProjectEpic({ projectName, epicName, epicId } = {}) {
     await this.gotoProjects();
 
-    await this.createNewProjectAction.first().waitFor({ state: 'visible' });
-    await this.createNewProjectAction.first().click();
-
-    await this.createProjectHeading.waitFor({ state: 'visible' });
-  }
-
-  /* =======================
-     🔹 PROJECT → EPIC
-  ======================== */
-   // pages/ProjectsPage.js
-async openProjectEpic(projectNameOrRegex = /Auto Project|Hachiwaree/i) {
-  await this.gotoProjects();
-
-  // Table exists in the main page
-  const table = this.page.getByRole('table');
-  await table.waitFor({ state: 'visible', timeout: 15000 });
-
-  // Try match by project name, else fallback to first data row
-  const rowByName = table.getByRole('row', { name: projectNameOrRegex }).first();
-  const firstDataRow = table.getByRole('row').nth(1); // row 0 = header
-
-  const row = (await rowByName.isVisible().catch(() => false)) ? rowByName : firstDataRow;
-
-  // In your screenshot the link name is "View Epics"
-  await row.getByRole('link', { name: /view epics/i }).click();
-
-  await this.page.waitForURL(/\/epics/i, { timeout: 15000 });
-}
-
-
-
-
-  /* =======================
-     CREATE PROJECT ACTIONS
-  ======================== */
-  async fillCreateProjectForm({ name, description, status, teams } = {}) {
-    if (name !== undefined) {
-      await this.projectNameInput.fill(String(name));
+    // If you already know epicId, go straight there (fast + stable)
+    if (epicId) {
+      const base = process.env.BASE_URL || 'https://demo.slickfox.com';
+      await this.page.goto(`${base}/epics/${epicId}`, { waitUntil: 'domcontentloaded' });
+      await expect(this.page).toHaveURL(new RegExp(`/epics/${epicId}`), { timeout: 20000 });
+      return;
     }
 
-    if (description !== undefined) {
-      await this.descriptionInput.fill(String(description));
+    // Otherwise click project by name (best effort)
+    if (projectName) {
+      const projectLink = this.main.getByRole('link', { name: new RegExp(projectName, 'i') })
+        .or(this.main.getByRole('button', { name: new RegExp(projectName, 'i') }));
+      await projectLink.first().click();
+      await this.page.waitForLoadState('domcontentloaded');
     }
 
-    if (status !== undefined) {
-      await this.statusSelect.selectOption({ label: status });
+    // Then open epic by name
+    if (epicName) {
+      const epicLink = this.main.getByRole('link', { name: new RegExp(epicName, 'i') })
+        .or(this.main.getByRole('button', { name: new RegExp(epicName, 'i') }))
+        .or(this.main.getByText(new RegExp(epicName, 'i')).first());
+      await epicLink.first().click();
+      await this.page.waitForLoadState('domcontentloaded');
+      return;
     }
 
-    // Teams optional → intentionally skipped
-  }
-
-  async submitCreateProject() {
-    await this.createProjectButton.click();
-
-    // success OR validation failure
-    await Promise.race([
-      this.page.waitForURL(/\/projects/i, { timeout: 15000 }),
-      this.createProjectHeading.waitFor({ state: 'visible', timeout: 15000 }),
-    ]);
-  }
-
-  async cancelCreateProject() {
-    await this.cancelLink.click();
-    await this.page.waitForURL(/\/projects/i);
-  }
-
-  /* =======================
-     ASSERTIONS
-  ======================== */
-  async expectProjectInList(projectName) {
-    if (!/\/projects/i.test(this.page.url())) {
-      await this.gotoProjects();
-    }
-
-    await expect(
-      this.mainContent.getByText(projectName, { exact: false })
-    ).toBeVisible({ timeout: 15000 });
-  }
-
-  async expectProjectNotInList(projectName) {
-    if (!/\/projects/i.test(this.page.url())) {
-      await this.gotoProjects();
-    }
-
-    await expect(
-      this.mainContent.getByText(projectName, { exact: false })
-    ).toHaveCount(0);
-  }
-
-  async expectNameRequiredError() {
-    const ariaInvalid = this.projectNameInput.locator(
-      '[aria-invalid="true"]'
-    );
-
-    await expect(
-      this.nameRequiredError.or(ariaInvalid)
-    ).toBeVisible({ timeout: 10000 });
+    // Fallback: click first visible epic-like link
+    const firstEpic = this.main.getByRole('link', { name: /epic|ep-/i })
+      .or(this.main.getByRole('button', { name: /epic|ep-/i }))
+      .first();
+    await firstEpic.click();
+    await this.page.waitForLoadState('domcontentloaded');
   }
 }
 
